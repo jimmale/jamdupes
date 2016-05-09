@@ -8,8 +8,28 @@ __license__ = "BSD-3"
 
 import os
 import sys
-import argparse 
+import argparse
+import hashlib
 
+def walk(path, db):
+	for root, dirs, files in os.walk(path):
+		for name in files:
+				filepath = os.path.join(root, name)
+				filesize = os.path.getsize(filepath)
+				print(filepath, filesize)
+
+				if filesize in db.keys():
+					db[filesize].append(filepath)
+				else:
+					db[filesize] = [filepath]
+
+def trimDb(db):
+	keysToDelete = []
+	for key in db.keys():
+		if len(db[key]) <= 1:
+			keysToDelete.append(key)
+	for key in keysToDelete:
+		del db[key]
 
 
 if __name__ == "__main__":
@@ -23,7 +43,16 @@ if __name__ == "__main__":
 	parser.add_argument('-S', '--size', dest='showSizeOfFiles', action='store_const', const=True, default=False, help='show size of duplicate files')
 	
 	parser.add_argument('-q', '--quiet', dest='quiet', action='store_const', const=True, default=False, help='hide progress indicator')
+	parser.add_argument('-v', '--verbose', dest='verbose', action='store_const', const=True, default=False, help='be verbose')
 	parser.add_argument("directory", nargs="+")
 	args = parser.parse_args()
-	print(args.directory)
-	print(args)
+	#print(args.directory)
+	#print(args)
+
+	db = {}
+	for dir in args.directory:
+		walk(dir, db)
+	print(db)
+
+	trimDb(db)
+	print(db)
