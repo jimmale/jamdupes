@@ -32,5 +32,10 @@ This reflects the reality that headers and metadata are often at the beginning o
 ###Added features?
 Coming soon. See Issue tracker. 
 
+
+###Prerequisites
+python 3 (tested on Python 3.4.2 on armhf Linux and Python 3.5.1 on Darwin x86_64)
+
+
 ###Licence
 BSD-3
