@@ -29,7 +29,7 @@ def walk(path, db):
 				filepath = os.path.join(root, name)
 				index(filepath, db)
 
-
+## Trims a dictionary. Any key that corresponds to one (and only one) value is deleted.
 def trimDb(db):
 	keysToDelete = []
 	for key in db.keys():
