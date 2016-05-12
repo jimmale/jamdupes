@@ -1,7 +1,7 @@
-# pyfdupes
+# jamdupes
 
 ###Introduction
-pyfdupes is a tool for finding duplicate files, inspired by [fdupes](https://github.com/adrianlopezroche/fdupes),
+jamdupes is a tool for finding duplicate files, inspired by [fdupes](https://github.com/adrianlopezroche/fdupes),
 with added features and speed improvements.
 
 ###Speed improvements?
@@ -13,7 +13,7 @@ real    2557m7.013s
 user    1413m21.272s
 sys     355m14.684s
 
-$ time pyfdupes -R -S -n ~/files/ > /dev/null
+$ time jamdupes -R -S -n ~/files/ > /dev/null
 
 real    330m23.645s
 user    133m30.824s

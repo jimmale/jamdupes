@@ -60,7 +60,7 @@ def hashWholeFile(path):
 	return m.hexdigest()
 
 if __name__ == "__main__":
-	parser = argparse.ArgumentParser(prog='pyfdupes')
+	parser = argparse.ArgumentParser(prog='jamdupes')
 	parser.add_argument('-n', '--noempty', dest='ignoreZeros', action='store_const', const=True, default=False, help='ignore zero-length files')
 	parser.add_argument('-R', '--recurse:', dest='recurse', action='store_const', const=True, default=False, help='descend into subdirectories')
 	parser.add_argument('-s', '--symlinks', dest='followSymlinks', action='store_const', const=True, default=False, help='follow symlinks')
