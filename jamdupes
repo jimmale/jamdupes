@@ -76,21 +76,17 @@ if __name__ == "__main__":
 		db = {}
 		if(args.recurse):
 			for dir in args.directory:
-				print("Scanning " + dir + "\t", end="")
-				sys.stdout.flush()
+				print("Scanning " + dir + "\t", end="", flush=True)
 				walk(dir, db)
 				print("done.\n")
-				sys.stdout.flush()
 		else:
 			for dir in args.directory:
-				print("Scanning " + dir + "\t", end="")
-				sys.stdout.flush()
+				print("Scanning " + dir + "\t", end="",  flush=True)
 				for file in os.listdir(dir):
 					if os.path.isfile(os.path.join(dir, file)):
 						filepath = os.path.join(dir, file)
 						index(filepath, db)
 				print("done.\n")
-				sys.stdout.flush()
 
 		trimDb(db)
 
