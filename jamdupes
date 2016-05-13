@@ -60,82 +60,88 @@ def hashWholeFile(path):
 	return m.hexdigest()
 
 if __name__ == "__main__":
-	parser = argparse.ArgumentParser(prog='jamdupes')
-	parser.add_argument('-n', '--noempty', dest='ignoreZeros', action='store_const', const=True, default=False, help='ignore zero-length files')
-	parser.add_argument('-R', '--recurse:', dest='recurse', action='store_const', const=True, default=False, help='descend into subdirectories')
-	parser.add_argument('-s', '--symlinks', dest='followSymlinks', action='store_const', const=True, default=False, help='follow symlinks')
-	parser.add_argument('-S', '--size', dest='showSizeOfFiles', action='store_const', const=True, default=False, help='show size of duplicate files')
-	parser.add_argument('-q', '--quiet', dest='quiet', action='store_const', const=True, default=False, help='hide progress indicator')
-	## parser.add_argument('-v', '--verbose', dest='verbose', action='store_const', const=True, default=False, help='be verbose')
-	parser.add_argument("directory", nargs="+")
-	args = parser.parse_args()
-	#print(args.directory)
-	#print(args)
+	try:
+		parser = argparse.ArgumentParser(prog='jamdupes')
+		parser.add_argument('-n', '--noempty', dest='ignoreZeros', action='store_const', const=True, default=False, help='ignore zero-length files')
+		parser.add_argument('-R', '--recurse:', dest='recurse', action='store_const', const=True, default=False, help='descend into subdirectories')
+		parser.add_argument('-s', '--symlinks', dest='followSymlinks', action='store_const', const=True, default=False, help='follow symlinks')
+		parser.add_argument('-S', '--size', dest='showSizeOfFiles', action='store_const', const=True, default=False, help='show size of duplicate files')
+		parser.add_argument('-q', '--quiet', dest='quiet', action='store_const', const=True, default=False, help='hide progress indicator')
+		## parser.add_argument('-v', '--verbose', dest='verbose', action='store_const', const=True, default=False, help='be verbose')
+		parser.add_argument("directory", nargs="+")
+		args = parser.parse_args()
+		#print(args.directory)
+		#print(args)
 
-	db = {}
-	if(args.recurse):
-		for dir in args.directory:
-			print("Scanning " + dir + "\t", end="")
-			walk(dir, db)
-			print("done.\n")
-	else:
-		for dir in args.directory:
-			print("Scanning " + dir + "\t", end="")
-			for file in os.listdir(dir):
-				if os.path.isfile(os.path.join(dir, file)):
-					filepath = os.path.join(dir, file)
-					index(filepath, db)
-			print("done.\n")
-
-	trimDb(db)
-
-	if(args.ignoreZeros):
-		if 0 in db.keys():
-			del db[0]
-
-	filecount = 0
-	for key in db.keys():
-		filecount=filecount+len(db[key])
-	# print(str(filecount) + " files in " + str(len(db.keys())) + " set(s) of possibly duplicate files")
-
-	filesProcessed = 0
-
-	hashes = {}
-
-	for size in db.keys():
-		if(size < MAX_FILE_CHUNK):
-			for file in db[size]:
-				hash = hashWholeFile(file)
-				if hash in hashes.keys():
-					hashes[hash].append(file)
-				else:
-					hashes[hash] = [file]
-				filesProcessed = filesProcessed + 1
+		db = {}
+		if(args.recurse):
+			for dir in args.directory:
+				print("Scanning " + dir + "\t", end="")
+				sys.stdout.flush()
+				walk(dir, db)
+				print("done.\n")
+				sys.stdout.flush()
 		else:
-			tmp = {}
-			for file in db[size]:
-				hash = hashChunk(file)
-				if hash in tmp.keys():
-					tmp[hash].append(file)
-				else:
-					tmp[hash] = [file]
-				filesProcessed = filesProcessed + 1
-			trimDb(tmp)
-			for key in tmp.keys():
-				for file in tmp[key]:
+			for dir in args.directory:
+				print("Scanning " + dir + "\t", end="")
+				sys.stdout.flush()
+				for file in os.listdir(dir):
+					if os.path.isfile(os.path.join(dir, file)):
+						filepath = os.path.join(dir, file)
+						index(filepath, db)
+				print("done.\n")
+				sys.stdout.flush()
+
+		trimDb(db)
+
+		if(args.ignoreZeros):
+			if 0 in db.keys():
+				del db[0]
+
+		filecount = 0
+		for key in db.keys():
+			filecount=filecount+len(db[key])
+		# print(str(filecount) + " files in " + str(len(db.keys())) + " set(s) of possibly duplicate files")
+
+		filesProcessed = 0
+
+		hashes = {}
+
+		for size in db.keys():
+			if(size < MAX_FILE_CHUNK):
+				for file in db[size]:
 					hash = hashWholeFile(file)
 					if hash in hashes.keys():
 						hashes[hash].append(file)
 					else:
 						hashes[hash] = [file]
 					filesProcessed = filesProcessed + 1
-		print("Progress: " + str((filesProcessed*1.0/filecount*1.0)*100)[0:6] + "%")
+			else:
+				tmp = {}
+				for file in db[size]:
+					hash = hashChunk(file)
+					if hash in tmp.keys():
+						tmp[hash].append(file)
+					else:
+						tmp[hash] = [file]
+					filesProcessed = filesProcessed + 1
+				trimDb(tmp)
+				for key in tmp.keys():
+					for file in tmp[key]:
+						hash = hashWholeFile(file)
+						if hash in hashes.keys():
+							hashes[hash].append(file)
+						else:
+							hashes[hash] = [file]
+						filesProcessed = filesProcessed + 1
+			print("Progress: " + str((filesProcessed*1.0/filecount*1.0)*100)[0:6] + "%")
 
-	trimDb(hashes)
-	for hash in hashes:
-		if(args.showSizeOfFiles):
-			print(os.path.getsize(hashes[hash][0]))
-		for file in hashes[hash]:
-			print(file)
-		print()	
-
+		trimDb(hashes)
+		for hash in hashes:
+			if(args.showSizeOfFiles):
+				print(os.path.getsize(hashes[hash][0]))
+			for file in hashes[hash]:
+				print(file)
+			print()	
+	except (KeyboardInterrupt):
+		print("\nInterrupted. Exiting.")
