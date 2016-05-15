@@ -39,19 +39,19 @@ def trimDb(db):
 		del db[key]
 
 
-def hashChunk(path):
+def hashChunk(path, chunkSize):
 	#print("Chunk: " + path)
 	f = open(path, "rb")
-	result = hashlib.sha1(f.read(MAX_FILE_CHUNK)).hexdigest()
+	result = hashlib.sha1(f.read(chunkSize)).hexdigest()
 	f.close()
 	return result
 
-def hashWholeFile(path):
+def hashWholeFile(path, chunkSize):
 	#print("File: " + path)
 	f = open(path, "rb")
 	m = hashlib.sha1()
 	while True:
-		buff=f.read(MAX_FILE_CHUNK)
+		buff=f.read(chunkSize)
 		if not buff:
 			break
 		else:
@@ -84,12 +84,12 @@ if __name__ == "__main__":
 
 		db = {}
 		for dir in args.recurseDirectories:
-			print("Scanning " + dir + "\t", end="", flush=True)
+			print("Indexing " + dir + "\t", end="", flush=True)
 			walk(dir, db)
 			print("done.\n")
 
 		for dir in args.nonrecurseDirectories:
-			print("Scanning " + dir + "\t", end="",  flush=True)
+			print("Indexing " + dir + "\t", end="",  flush=True)
 			for file in os.listdir(dir):
 				if os.path.isfile(os.path.join(dir, file)):
 					filepath = os.path.join(dir, file)
@@ -114,7 +114,7 @@ if __name__ == "__main__":
 		for size in db.keys():
 			if(size < MAX_FILE_CHUNK):
 				for file in db[size]:
-					hash = hashWholeFile(file)
+					hash = hashWholeFile(file, args.chunk)
 					if hash in hashes.keys():
 						hashes[hash].append(file)
 					else:
@@ -123,7 +123,7 @@ if __name__ == "__main__":
 			else:
 				tmp = {}
 				for file in db[size]:
-					hash = hashChunk(file)
+					hash = hashChunk(file, args.chunk)
 					if hash in tmp.keys():
 						tmp[hash].append(file)
 					else:
@@ -132,7 +132,7 @@ if __name__ == "__main__":
 				trimDb(tmp)
 				for key in tmp.keys():
 					for file in tmp[key]:
-						hash = hashWholeFile(file)
+						hash = hashWholeFile(file, args.chunk)
 						if hash in hashes.keys():
 							hashes[hash].append(file)
 						else:
