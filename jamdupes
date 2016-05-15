@@ -12,9 +12,6 @@ import sys
 import argparse
 import hashlib
 
-MAX_FILE_CHUNK = 10000000 ##10MB
-
-
 def index(path, db):
 	filesize = os.path.getsize(path)
 
@@ -105,14 +102,13 @@ if __name__ == "__main__":
 		bytecount = 0
 		for key in db.keys():
 			bytecount=bytecount+len(db[key])*key
-		# print(str(filecount) + " files in " + str(len(db.keys())) + " set(s) of possibly duplicate files")
-
+		
 		bytesProcessed = 0
 
 		hashes = {}
 
 		for size in db.keys():
-			if(size < MAX_FILE_CHUNK):
+			if(size < args.chunk):
 				for file in db[size]:
 					hash = hashWholeFile(file, args.chunk)
 					if hash in hashes.keys():
