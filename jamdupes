@@ -62,31 +62,39 @@ def hashWholeFile(path):
 if __name__ == "__main__":
 	try:
 		parser = argparse.ArgumentParser(prog='jamdupes')
+		parser.add_argument(dest='nonrecurseDirectories', default=[], action='append', nargs='*', metavar="DIRECTORY")
 		parser.add_argument('-n', '--noempty', dest='ignoreZeros', action='store_const', const=True, default=False, help='ignore zero-length files')
-		parser.add_argument('-R', '--recurse:', dest='recurse', action='store_const', const=True, default=False, help='descend into subdirectories')
+
+		parser.add_argument('-1', '--sameline', dest='omitfirst', action='store_const', const=True, default=False, help='list all matching files on one line, separated by spaces.')
+		parser.add_argument('-f', '--omitfirst', dest='omitfirst', action='store_const', const=True, default=False, help='omit the first copy of a file found. This may be a random file from the set of matching files.')
 		parser.add_argument('-s', '--symlinks', dest='followSymlinks', action='store_const', const=True, default=False, help='follow symlinks')
 		parser.add_argument('-S', '--size', dest='showSizeOfFiles', action='store_const', const=True, default=False, help='show size of duplicate files')
-		parser.add_argument('-q', '--quiet', dest='quiet', action='store_const', const=True, default=False, help='hide progress indicator')
-		## parser.add_argument('-v', '--verbose', dest='verbose', action='store_const', const=True, default=False, help='be verbose')
-		parser.add_argument("directory", nargs="+")
+		parser.add_argument('-R', '--recurse:', dest='recurseDirectories', default=[], action='append', nargs='+', metavar='DIRECTORY', help="recurse into *all* following directories")
+		parser.add_argument('-r', '--recurse', dest='recurseDirectories', default=[], action='append', nargs=1, metavar='DIRECTORY', help="recurse into the following directory")
+		parser.add_argument('-q', '--quiet', dest='quiet', default=False, action='store_const', const=True, help="hide progress bar")
+
+		parser.add_argument('-c', '--chunk', dest='chunk', default=10000000, action='store_const', const=True, help='initial test chunk size for large files in bytes. default: 10MB')
 		args = parser.parse_args()
-		#print(args.directory)
-		#print(args)
+
+		## flattening the directory lists. code from 
+		## http://stackoverflow.com/questions/11264684/flatten-list-of-lists
+		## thanks to Paul Seeb for this snippet.
+		args.recurseDirectories = [val for sublist in args.recurseDirectories for val in sublist]
+		args.nonrecurseDirectories = [val for sublist in args.nonrecurseDirectories for val in sublist]
 
 		db = {}
-		if(args.recurse):
-			for dir in args.directory:
-				print("Scanning " + dir + "\t", end="", flush=True)
-				walk(dir, db)
-				print("done.\n")
-		else:
-			for dir in args.directory:
-				print("Scanning " + dir + "\t", end="",  flush=True)
-				for file in os.listdir(dir):
-					if os.path.isfile(os.path.join(dir, file)):
-						filepath = os.path.join(dir, file)
-						index(filepath, db)
-				print("done.\n")
+		for dir in args.recurseDirectories:
+			print("Scanning " + dir + "\t", end="", flush=True)
+			walk(dir, db)
+			print("done.\n")
+
+		for dir in args.nonrecurseDirectories:
+			print("Scanning " + dir + "\t", end="",  flush=True)
+			for file in os.listdir(dir):
+				if os.path.isfile(os.path.join(dir, file)):
+					filepath = os.path.join(dir, file)
+					index(filepath, db)
+			print("done.\n")
 
 		trimDb(db)
 
@@ -94,12 +102,12 @@ if __name__ == "__main__":
 			if 0 in db.keys():
 				del db[0]
 
-		filecount = 0
+		bytecount = 0
 		for key in db.keys():
-			filecount=filecount+len(db[key])
+			bytecount=bytecount+len(db[key])*key
 		# print(str(filecount) + " files in " + str(len(db.keys())) + " set(s) of possibly duplicate files")
 
-		filesProcessed = 0
+		bytesProcessed = 0
 
 		hashes = {}
 
@@ -111,7 +119,7 @@ if __name__ == "__main__":
 						hashes[hash].append(file)
 					else:
 						hashes[hash] = [file]
-					filesProcessed = filesProcessed + 1
+					bytesProcessed = bytesProcessed + size
 			else:
 				tmp = {}
 				for file in db[size]:
@@ -120,7 +128,7 @@ if __name__ == "__main__":
 						tmp[hash].append(file)
 					else:
 						tmp[hash] = [file]
-					filesProcessed = filesProcessed + 1
+					bytesProcessed = bytesProcessed + size
 				trimDb(tmp)
 				for key in tmp.keys():
 					for file in tmp[key]:
@@ -129,8 +137,8 @@ if __name__ == "__main__":
 							hashes[hash].append(file)
 						else:
 							hashes[hash] = [file]
-						filesProcessed = filesProcessed + 1
-			print("Progress: " + str((filesProcessed*1.0/filecount*1.0)*100)[0:6] + "%")
+						bytesProcessed = bytesProcessed + size
+			print("Progress: " + str((bytesProcessed*1.0/bytecount*1.0)*100)[0:6] + "%")
 
 		trimDb(hashes)
 		for hash in hashes:
