@@ -20,9 +20,9 @@ def index(path, db):
 	else:
 		db[filesize] = [path]
 
-def walk(path, db):
+def walk(path, db, symlinks):
 	filesToIndex = []
-	for root, dirs, files in os.walk(path):
+	for root, dirs, files in os.walk(path, followlinks=symlinks):
 		for name in files:
 				filepath = os.path.abspath(os.path.join(root, name))
 				filesToIndex.append(filepath)
@@ -87,10 +87,11 @@ if __name__ == "__main__":
 		args.nonrecurseDirectories = [val for sublist in args.nonrecurseDirectories for val in sublist]
 		## end snippet
 
+
 		db = {}
 		for dir in args.recurseDirectories:
 			print("Indexing " + dir + "\t", end="", flush=True)
-			walk(dir, db)
+			walk(dir, db, args.followSymlinks)
 			print("done.\n")
 
 		for dir in args.nonrecurseDirectories:
