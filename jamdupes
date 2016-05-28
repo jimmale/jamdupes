@@ -85,6 +85,7 @@ if __name__ == "__main__":
 		## thanks to Paul Seeb for this snippet.
 		args.recurseDirectories = [val for sublist in args.recurseDirectories for val in sublist]
 		args.nonrecurseDirectories = [val for sublist in args.nonrecurseDirectories for val in sublist]
+		## end snippet
 
 		db = {}
 		for dir in args.recurseDirectories:
