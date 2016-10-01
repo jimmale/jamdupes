@@ -17,6 +17,7 @@ try:
 	import progressbar
 except ImportError:
 	progressbar = None
+	print("couldn't locate progress bar library")
 
 class jamdupesDictionary(collections.defaultdict):
 	def __init__(self):
@@ -205,9 +206,9 @@ if __name__ == "__main__":
 		print("bytes to index: ", bytesToIndex)
 		print("files to index: ", fileCount)
 
-		for file in filesToIndex:
+		for fileSize in filesToIndex:
 			try:
-				pass
+
 			except PermissionError:
 				sys.stderr.write("Access Denied: " + file.path + "\n")
 	except (KeyboardInterrupt):
