@@ -26,7 +26,7 @@ class jamdupesDictionary(collections.defaultdict):
 		self.default_factory = list
 		for item in collection:
 			assert(type(item) == jamdupesFile)
-			self.insertJamdupesFile(item)
+			self.insertJamDupesFileBySize(item)
 	def trimKeysWithOnlyOneValue(self):
 		tmpkeys = list(self.keys())
 		for key in tmpkeys:
@@ -35,8 +35,11 @@ class jamdupesDictionary(collections.defaultdict):
 	def trimZeroKey(self):
 		if (0 in self.keys()):
 			del self[0]
-	def insertJamdupesFile(self, jdFile):
+	def insertJamdupesFileBySize(self, jdFile):
 		self[jdFile.size()].append(jdFile)
+	def insertJamdupesFileByState(self, jdFile):
+		self[jdFile.hashState].append(jdFile)
+
 
 
 ## helpful help from
@@ -45,6 +48,8 @@ class jamdupesFile:
 	def __init__(self, path):
 		self.path = path
 		self.hash = ''
+		self.offset = 0
+		self.hashState = hashlib.sha1()
 
 	def __repr__(self):
 		return '<{}: {}>'.format(self.__class__.__name__, self.path)
@@ -86,25 +91,36 @@ class jamdupesFile:
 	def isReadable(self):
 		return os.access(self.path, os.R_OK)
 
-	def hashHeader(self):
-		chunkSize = args.chunk
-		hashState = hashlib.sha1()
-		fp = open(self.path, "rb")
-		hashState.update(fp.read(chunkSize))
-		fp.close()
-		return hashState.hexdigest()
+	def hash(self):
+		if self.offset < self.size():
+			fin = open(self.path, "r")
+			fin.seek(self.offset)
+			self.hashState.update(fin.read(args.chunkSize))
+			fin.close()
+			self.offset = self.offset + args.chunkSize
+			return True
+		else:
+			return False
 
-	def hashWholeFile(self):
-		if (self.hash == ''):
-			chunkSize = args.chunk
-			chunks = math.ceil(self.size()/chunkSize) + 1
-			hashState = hashlib.sha1()
-			fp = open(self.path, "rb")
-			for i in range(0, chunks):
-				chunk = fp.read(chunkSize)
-				hashState.update(chunk)
-			self.hash = hashState.hexdigest()
-		return self.hash
+	# def hashHeader(self):
+	# 	chunkSize = args.chunk
+	# 	hashState = hashlib.sha1()
+	# 	fp = open(self.path, "rb")
+	# 	hashState.update(fp.read(chunkSize))
+	# 	fp.close()
+	# 	return hashState.hexdigest()
+	#
+	# def hashWholeFile(self):
+	# 	if (self.hash == ''):
+	# 		chunkSize = args.chunk
+	# 		chunks = math.ceil(self.size()/chunkSize) + 1
+	# 		hashState = hashlib.sha1()
+	# 		fp = open(self.path, "rb")
+	# 		for i in range(0, chunks):
+	# 			chunk = fp.read(chunkSize)
+	# 			hashState.update(chunk)
+	# 		self.hash = hashState.hexdigest()
+	# 	return self.hash
 
 def listFilesNonRecursive(path):
 	if os.path.isfile(path):
@@ -208,6 +224,17 @@ if __name__ == "__main__":
 
 		for fileSize in filesToIndex:
 			try:
+				files = filesToIndex[fileSize]
+
+				while ( (len(files) > 1) and (files[0].offset < fileSize)):
+					dictionary = collections.defaultdict(list)
+					for file in files:
+						dictionary[file.hashState].append(file)
+
+				## sort by hashState
+				## remove any group with only one element
+				## hash one more chunk
+				## loop
 
 			except PermissionError:
 				sys.stderr.write("Access Denied: " + file.path + "\n")
