@@ -12,6 +12,7 @@ import math
 import argparse
 import hashlib
 import collections
+import time
 
 try:
 	import progressbar
@@ -26,30 +27,52 @@ class jamdupesDictionary(collections.defaultdict):
 		self.default_factory = list
 		for item in collection:
 			assert(type(item) == jamdupesFile)
-			self.insertJamDupesFileBySize(item)
+			self.insertJamdupesFile(item)
 	def trimKeysWithOnlyOneValue(self):
 		tmpkeys = list(self.keys())
 		for key in tmpkeys:
 			if (len(self[key]) <= 1):
 				del self[key]
 	def trimZeroKey(self):
-		if (0 in self.keys()):
-			del self[0]
-	def insertJamdupesFileBySize(self, jdFile):
-		self[jdFile.size()].append(jdFile)
-	def insertJamdupesFileByState(self, jdFile):
-		self[jdFile.hashState].append(jdFile)
+		keysToDelete = []
+		for k in self.keys():
+			if (k[0] == 0):
+				keysToDelete.append(k)
+		for k in keysToDelete:
+			del self[k]
 
+	def trimIdenticalFiles(self):
+		keysToDelete = []
+		for k in self.keys():
+			if (self[k][0].size() == self[k][0].offset):
+				keysToDelete.append(k)
+		for k in keysToDelete:
+			for f in self[k]:
+				print("Duplicate: " + f.path)
+			print("")
+			del self[k]
 
+	def insertJamdupesFile(self, jdFile):
+		self[jdFile.tupleState()].append(jdFile)
+
+	def printContents(self):
+		print('-'*8)
+		if (len(self.keys()) > 0):
+			for k in self.keys():
+				print(k)
+				for f in self[k]:
+					print("\t" + f.__repr__())
+		else:
+			print("<Empty>")
+		print('-'*8)
 
 ## helpful help from
 ## http://pythoncentral.io/how-to-sort-a-list-tuple-or-object-with-sorted-in-python/
 class jamdupesFile:
 	def __init__(self, path):
 		self.path = path
-		self.hash = ''
-		self.offset = 0
 		self.hashState = hashlib.sha1()
+		self.offset = 0
 
 	def __repr__(self):
 		return '<{}: {}>'.format(self.__class__.__name__, self.path)
@@ -85,42 +108,22 @@ class jamdupesFile:
 	def size(self):
 		return os.path.getsize(self.path)
 
+	def tupleState(self):
+		return (self.size(), self.offset, self.hashState.hexdigest())
+
 	def isLink(self):
 		return os.path.islink(self.path)
 
 	def isReadable(self):
 		return os.access(self.path, os.R_OK)
 
-	def hash(self):
-		if self.offset < self.size():
-			fin = open(self.path, "r")
-			fin.seek(self.offset)
-			self.hashState.update(fin.read(args.chunkSize))
-			fin.close()
-			self.offset = self.offset + args.chunkSize
-			return True
-		else:
-			return False
-
-	# def hashHeader(self):
-	# 	chunkSize = args.chunk
-	# 	hashState = hashlib.sha1()
-	# 	fp = open(self.path, "rb")
-	# 	hashState.update(fp.read(chunkSize))
-	# 	fp.close()
-	# 	return hashState.hexdigest()
-	#
-	# def hashWholeFile(self):
-	# 	if (self.hash == ''):
-	# 		chunkSize = args.chunk
-	# 		chunks = math.ceil(self.size()/chunkSize) + 1
-	# 		hashState = hashlib.sha1()
-	# 		fp = open(self.path, "rb")
-	# 		for i in range(0, chunks):
-	# 			chunk = fp.read(chunkSize)
-	# 			hashState.update(chunk)
-	# 		self.hash = hashState.hexdigest()
-	# 	return self.hash
+	def hashChunk(self):
+		if(self.offset < self.size()):
+			fp = open(self.path, "rb")
+			fp.seek(self.offset)
+			self.hashState.update(fp.read(args.chunk))
+			fp.close()
+			self.offset = min(self.size(), (self.offset + args.chunk))
 
 def listFilesNonRecursive(path):
 	if os.path.isfile(path):
@@ -160,6 +163,7 @@ def parseArguments():
 	#parser.add_argument('-q', '--quiet', dest='quiet', default=False, action='store_const', const=True, help="hide progress bar")
 
 	parser.add_argument('-c', '--chunk', dest='chunk', default=10000000, action='store_const', const=True, help='initial test chunk size for large files in bytes. default: 10MB')
+	parser.add_argument('--verbose', '-v', action='count', default=0)
 	global args
 	args = parser.parse_args()
 
@@ -206,37 +210,40 @@ if __name__ == "__main__":
 		# values = list of jamdupesFile objects
 		filesToIndex = jamdupesDictionary(filesToIndex)
 
+		if(args.verbose >= 2):
+			print("Initial file list:")
+			filesToIndex.printContents()
+			print("")
+
 		# strip out zero-length files if needed
 		if (args.ignoreZeros):
 			filesToIndex.trimZeroKey()
+			if(args.verbose >= 2):
+				print("After removing zero-length files:")
+				filesToIndex.printContents()
+				print("")
 
 		# strip out unique-length files
 		filesToIndex.trimKeysWithOnlyOneValue()
+		if(args.verbose >= 2):
+			print("After removing unique-length files:")
+			filesToIndex.printContents()
+			print("")
 
-		# count the number of bytes to index
-		bytesToIndex = 0
-		fileCount = 0
-		for key in filesToIndex.keys():
-			bytesToIndex = bytesToIndex + (key * len(filesToIndex[key]))
-			fileCount = fileCount + len(filesToIndex[key])
-		print("bytes to index: ", bytesToIndex)
-		print("files to index: ", fileCount)
+		while(len(filesToIndex.keys()) > 0):
+			if(args.verbose >= 2):
+				print("*LOOP*")
+			k = list(filesToIndex.keys())[0]
+			files = filesToIndex[k]
+			del filesToIndex[k]
 
-		for fileSize in filesToIndex:
-			try:
-				files = filesToIndex[fileSize]
+			for f in files:
+				f.hashChunk()
+				filesToIndex.insertJamdupesFile(f)
+			filesToIndex.trimKeysWithOnlyOneValue()
+			filesToIndex.trimIdenticalFiles()
+			if(args.verbose >= 2):
+				filesToIndex.printContents()
 
-				while ( (len(files) > 1) and (files[0].offset < fileSize)):
-					dictionary = collections.defaultdict(list)
-					for file in files:
-						dictionary[file.hashState].append(file)
-
-				## sort by hashState
-				## remove any group with only one element
-				## hash one more chunk
-				## loop
-
-			except PermissionError:
-				sys.stderr.write("Access Denied: " + file.path + "\n")
 	except (KeyboardInterrupt):
 		pass
